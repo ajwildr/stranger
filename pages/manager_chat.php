@@ -2,76 +2,41 @@
 session_start();
 require '../includes/db_connect.php';
 
-// Ensure only managers can access this page
-if (!isset($_SESSION['role']) || $_SESSION['role'] != 'Manager') {
+// Ensure only team members can access this page
+if ($_SESSION['role'] != 'Manager' ) {
     // header("Location: error.php");
     // exit;
-    echo "<script>window.location.href = 'login.php';</script>";
+    echo "<script>window.location.href = 'error.php';</script>";
 }
-
-// Initialize variables
-$discussion_id = null;
-$chats = [];
-$error_message = '';
 
 // Get the discussion_id from the URL
 if (isset($_GET['discussion_id'])) {
-    $discussion_id = filter_var($_GET['discussion_id'], FILTER_VALIDATE_INT);
-    
-    if ($discussion_id === false || $discussion_id === null) {
-        // header("Location: error.php");
-        // exit;
-        echo "<script>window.location.href = 'error.php';</script>";
+    $discussion_id = $_GET['discussion_id'];
+    $query = "SELECT chat_id, username, chat_msg, time FROM chat WHERE discussion_id = ? ORDER BY time ASC";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("i", $discussion_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $chats = [];
+    while ($row = $result->fetch_assoc()) {
+        $chats[] = $row;
     }
-
-    // Fetch all chat messages for the discussion_id along with the username
-    try {
-        $query = "SELECT chat_id, username, chat_msg, time 
-                 FROM chat 
-                 WHERE discussion_id = ? 
-                 ORDER BY time ASC";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $discussion_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        while ($row = $result->fetch_assoc()) {
-            $chats[] = $row;
-        }
-        $stmt->close();
-    } catch (Exception $e) {
-        $error_message = "Error loading chat messages.";
-        error_log("Database error: " . $e->getMessage());
-    }
+    $stmt->close();
 }
 
 // Handle new chat message submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg']) && $discussion_id) {
-    $chat_msg = trim($_POST['chat_msg']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
+    $chat_msg = $_POST['chat_msg'];
     $username = $_SESSION['username'];
+    $query = "INSERT INTO chat (discussion_id, chat_msg, username, time) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iss", $discussion_id, $chat_msg, $username);
+    $stmt->execute();
+    $stmt->close();
+    // header("Location: chat_page.php?discussion_id=" . $discussion_id);
+    // exit;
+    echo "<script>window.location.href = 'chat_page.php?discussion_id=" . $discussion_id . "';</script>";
 
-    if (!empty($chat_msg)) {
-        try {
-            $query = "INSERT INTO chat (discussion_id, chat_msg, username, time) 
-                     VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("iss", $discussion_id, $chat_msg, $username);
-            
-            if ($stmt->execute()) {
-                // Redirect to avoid form resubmission
-                // header("Location: manager_chat.php?discussion_id=" . $discussion_id);
-                // exit;
-                echo "<script>window.location.href = 'manager_chat.php?discussion_id=" . $discussion_id . "';</script>";
-                exit;
-            } else {
-                $error_message = "Failed to send message.";
-            }
-            $stmt->close();
-        } catch (Exception $e) {
-            $error_message = "Error sending message.";
-            error_log("Database error: " . $e->getMessage());
-        }
-    }
 }
 ?>
 
@@ -80,154 +45,223 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg']) && $discu
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager Discussion Chat</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <title>Team Discussion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f0f0;
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --background-color: #f3f4f6;
+            --chat-bg-sent: #2563eb;
+            --chat-bg-received: #f3f4f6;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+        }
+
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.5;
         }
 
-        .chat-box {
-            height: 400px;
-            overflow-y: auto;
-            padding: 15px;
-            margin-bottom: 20px;
-            background-color: transparent;
-            max-height: 500px;
-            border-bottom: 1px solid #ccc;
-        }
-
-        .chat-message {
-            padding: 12px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            background-color: rgba(0, 0, 0, 0.05);
-            width: fit-content;
-            max-width: 80%;
-            word-wrap: break-word;
-            font-size: 1.1em;
-            position: relative;
-        }
-
-        .chat-message.current-user {
-            background-color: rgba(0, 123, 255, 0.7);
-            color: white;
-            margin-left: auto;
-        }
-
-        .chat-message.other-user {
-            background-color: rgba(248, 249, 250, 0.8);
-            color: #333;
-        }
-
-        .chat-message span {
-            font-size: 0.85em;
-            color: rgba(0, 0, 0, 0.6);
-            position: absolute;
-            bottom: 5px;
-            right: 10px;
-        }
-
-        .chat-form {
+        .chat-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            height: calc(100vh - 4rem);
             display: flex;
             flex-direction: column;
-            gap: 10px;
-        }
-
-        .chat-form textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(0, 0, 0, 0.2);
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            font-size: 1em;
-            resize: none;
-            height: 100px;
-        }
-
-        .chat-form button {
-            padding: 12px 20px;
-            background-color: rgba(0, 123, 255, 0.8);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1.1em;
-            transition: background-color 0.3s ease;
-        }
-
-        .chat-form button:hover {
-            background-color: rgba(0, 123, 255, 1);
-        }
-
-        .error-message {
-            color: #dc3545;
-            padding: 10px;
-            margin: 10px 0;
-            background-color: rgba(220, 53, 69, 0.1);
-            border-radius: 5px;
         }
 
         .chat-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
+            padding: 1.25rem 1.5rem;
+            background-color: white;
+            border-bottom: 1px solid var(--border-color);
         }
 
-        .back-link {
+        .chat-header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--secondary-color);
             text-decoration: none;
-            color: #007bff;
-            font-size: 1.1em;
+            font-weight: 500;
+            transition: color 0.2s ease;
         }
 
-        .back-link:hover {
-            text-decoration: underline;
+        .back-button:hover {
+            color: var(--primary-color);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 1rem;
+            border-radius: 12px;
+            position: relative;
+            font-size: 0.95rem;
+        }
+
+        .message.sent {
+            background-color: var(--chat-bg-sent);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received {
+            background-color: var(--chat-bg-received);
+            color: var(--text-primary);
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .message.sent .message-header {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .message.received .message-header {
+            color: var(--text-secondary);
+        }
+
+        .message-content {
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .chat-input {
+            padding: 1.5rem;
+            background-color: white;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-form {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .chat-form textarea {
+            flex: 1;
+            padding: 0.875rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            resize: none;
+            height: 100px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .chat-form textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+
+        .send-button {
+            padding: 0 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .send-button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .send-button i {
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                margin: 0;
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .message {
+                max-width: 85%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="chat-container">
         <div class="chat-header">
-            <h1>Manager Discussion Chat</h1>
-            <a href="manager_discussion.php" class="back-link">Back to Discussions</a>
+            <h1>Team Discussion</h1>
+            <a href="discussion.php" class="back-button">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Discussions</span>
+            </a>
         </div>
 
-        <?php if ($error_message): ?>
-            <div class="error-message">
-                <?php echo htmlspecialchars($error_message); ?>
-            </div>
-        <?php endif; ?>
-
-        <div class="chat-box">
+        <div class="chat-messages">
             <?php foreach ($chats as $chat): ?>
-                <div class="chat-message <?= ($chat['username'] == $_SESSION['username']) ? 'current-user' : 'other-user' ?>">
-                    <p><strong><?= htmlspecialchars($chat['username']) ?>:</strong> 
-                       <?= nl2br(htmlspecialchars($chat['chat_msg'])) ?></p>
-                    <span>Sent at <?= htmlspecialchars($chat['time']) ?></span>
+                <div class="message <?= ($chat['username'] == $_SESSION['username']) ? 'sent' : 'received' ?>">
+                    <div class="message-header">
+                        <strong><?= htmlspecialchars($chat['username']) ?></strong>
+                        <span><?= date('g:i A', strtotime($chat['time'])) ?></span>
+                    </div>
+                    <div class="message-content">
+                        <?= nl2br(htmlspecialchars($chat['chat_msg'])) ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>
 
-        <form class="chat-form" method="POST" action="manager_chat.php?discussion_id=<?= urlencode($discussion_id) ?>">
-            <textarea name="chat_msg" placeholder="Type your message..." required></textarea>
-            <button type="submit">Send Message</button>
-        </form>
+        <div class="chat-input">
+            <form class="chat-form" method="POST" action="chat_page.php?discussion_id=<?= urlencode($discussion_id) ?>">
+                <textarea name="chat_msg" placeholder="Type your message..." required></textarea>
+                <button type="submit" class="send-button">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Send</span>
+                </button>
+            </form>
+        </div>
     </div>
 </body>
 </html>
