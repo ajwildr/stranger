@@ -1,5 +1,6 @@
 <?php
 session_start(); 
+require '../includes/db_connect.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -181,7 +182,7 @@ session_start();
 <body>
     <?php
     
-    require '../includes/db_connect.php';
+
 
     if (!isset($_SESSION['user_id'])) {
         // header('Location: login.php');

@@ -1,6 +1,7 @@
 <?php
-require '../includes/db_connect.php';
 session_start();
+require '../includes/db_connect.php';
+
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {

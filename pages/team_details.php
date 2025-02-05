@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../includes/db_connect.php';
 
 // Check if user is logged in and is a Team Lead
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'TeamLead') {
@@ -8,7 +9,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'TeamLead') {
     echo "<script>window.location.href = 'error.php';</script>";
 }
 
-require_once '../includes/db_connect.php';
+
 
 // Get team details based on the team lead's team
 $team_lead_id = $_SESSION['user_id'];
