@@ -81,6 +81,7 @@
         // header("Location: error.php");
         // exit;
         // echo "<script>window.location.href = 'error.php';</script>";
+        var_dump($_SESSION);
     }
     
     $team_id = $_SESSION['team_id'];
