@@ -80,7 +80,7 @@
     if ($_SESSION['role'] != 'TeamMember' && $_SESSION['role'] != 'TeamLead') {
         // header("Location: error.php");
         // exit;
-        echo "<script>window.location.href = 'error.php';</script>";
+        // echo "<script>window.location.href = 'error.php';</script>";
     }
     
     $team_id = $_SESSION['team_id'];
