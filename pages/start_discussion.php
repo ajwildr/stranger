@@ -1,3 +1,7 @@
+<?php
+ session_start(); 
+ require '../includes/db_connect.php';
+ ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -85,8 +89,7 @@
 </head>
 <body>
     <?php 
-    session_start();
-    require '../includes/db_connect.php';
+   
 
     // Ensure only Team Members or Team Leads can access this page
     if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['TeamMember', 'TeamLead'])) {
