@@ -3,7 +3,6 @@ session_start();
 require '../includes/db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'TeamMember') {
-    // header("Location: login.php");
     echo "<script>window.location.href = 'error.php';</script>";
     exit();
 }
@@ -38,226 +37,255 @@ $meetingResult = $stmt->get_result();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Member Notifications</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <title>Team Member Notifications | Workspace</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #34495e;
-            --background: #f8f9fa;
-            --accent: #3498db;
-            --success: #2ecc71;
-            --warning: #f1c40f;
-            --danger: #e74c3c;
-        }
-
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background);
-            min-height: 100vh;
+            background-color: #f8f9fa;
         }
 
         .navbar {
-            background-color: var(--primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1rem;
+            background-color: #2c3e50;
+            padding: 1rem 0;
+        }
+
+        .navbar .back-btn {
+            color: #ffffff;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .navbar .back-btn:hover {
+            color: #3498db;
+        }
+
+        .navbar-brand {
+            color: #ffffff;
+            font-weight: 600;
+            margin-left: 1rem;
+        }
+
+        .notifications-container {
+            max-width: 1200px;
+            margin: 2rem auto;
         }
 
         .notification-card {
             background: #ffffff;
             border-radius: 10px;
             border: none;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .notification-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .notification-header {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         .notification-title {
-            color: var(--primary);
+            font-size: 1.1rem;
             font-weight: 600;
+            color: #2c3e50;
             margin: 0;
         }
 
-        .notification-subtitle {
-            color: var(--secondary);
-            margin-top: 0.5rem;
+        .notification-content {
+            padding: 1.25rem;
         }
 
-        .timer {
-            color: var(--accent);
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .points-badge {
+            background-color: #3498db;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
             font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
         }
 
         .meeting-status {
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
             font-size: 0.875rem;
             font-weight: 500;
         }
 
         .status-scheduled {
-            background-color: var(--warning);
-            color: #000;
+            background-color: #e9ecef;
+            color: #2c3e50;
         }
 
         .status-in-progress {
-            background-color: var(--success);
-            color: #fff;
+            background-color: #d4edda;
+            color: #155724;
         }
 
-        .clear-all-btn {
-            background-color: var(--danger);
-            color: white;
-            border: none;
+        .btn-view {
+            background-color: #3498db;
+            color: #ffffff;
             padding: 0.75rem 1.5rem;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .clear-all-btn:hover {
-            background-color: #c0392b;
-            transform: translateY(-1px);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--secondary);
-            font-size: 1.25rem;
-            opacity: 0.5;
-            transition: all 0.3s ease;
-        }
-
-        .close-btn:hover {
-            opacity: 1;
-            color: var(--danger);
-        }
-
-        .back-btn {
-            background-color: var(--accent);
-            color: white;
-            padding: 0.5rem 1.5rem;
-            border-radius: 5px;
+            border-radius: 6px;
             text-decoration: none;
-            transition: all 0.3s ease;
-        }
-
-        .back-btn:hover {
-            background-color: #2980b9;
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .section-title {
-            color: var(--primary);
-            font-weight: 600;
-            margin: 2rem 0 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--accent);
-        }
-
-        .points-badge {
-            background-color: var(--accent);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 15px;
-            font-size: 0.875rem;
             font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .btn-view:hover {
+            background-color: #2980b9;
+            color: #ffffff;
+        }
+
+        .btn-join {
+            background-color: #2ecc71;
+            border-color: #2ecc71;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .btn-join:hover {
+            background-color: #27ae60;
+            color: #ffffff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .timer {
+            color: #6c757d;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-dark fixed-top">
-        <div class="container d-flex justify-content-between align-items-center">
-            <h1 class="navbar-brand mb-0">
-                <i class="fas fa-bell me-2"></i>
-                Notifications
-            </h1>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container">
             <a href="teammember_dashboard.php" class="back-btn">
-                <i class="fas fa-arrow-left me-2"></i>
-                Back to Dashboard
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
             </a>
+            <span class="navbar-brand">Notifications</span>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <div class="container" style="margin-top: 100px;">
-        <!-- Notification Header -->
-        <div class="notification-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="notification-title">Your Notifications</h1>
-                    <p class="notification-subtitle mb-0">Stay updated with your tasks and meetings</p>
-                </div>
-                <button class="clear-all-btn" onclick="clearAllNotifications()">
-                    <i class="fas fa-trash-alt me-2"></i>
-                    Clear All
-                </button>
-            </div>
-        </div>
-
+    <div class="container notifications-container">
         <!-- Tasks Section -->
         <h2 class="section-title">
             <i class="fas fa-tasks me-2"></i>
             New Tasks Assigned
         </h2>
         
-        <?php while ($task = $taskResult->fetch_assoc()): ?>
-        <div class="notification-card card" id="task-<?php echo $task['task_id']; ?>">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="h5 mb-3"><?php echo htmlspecialchars($task['task_title']); ?></h3>
-                        <span class="points-badge">
-                            <i class="fas fa-star me-1"></i>
-                            <?php echo $task['points']; ?> Points
-                        </span>
-                    </div>
-                    <button class="close-btn" onclick="removeNotification('task-<?php echo $task['task_id']; ?>')">
-                        <i class="fas fa-times"></i>
-                    </button>
+        <?php if ($taskResult->num_rows === 0): ?>
+            <div class="empty-state">
+                <i class="fas fa-clipboard-check"></i>
+                <h3>No New Tasks</h3>
+                <p class="text-muted">You're all caught up! There are no new tasks assigned to you.</p>
+            </div>
+        <?php else: ?>
+            <?php while ($task = $taskResult->fetch_assoc()): ?>
+            <div class="notification-card">
+                <div class="notification-header">
+                    <h5 class="notification-title"><?php echo htmlspecialchars($task['task_title']); ?></h5>
+                    <span class="points-badge">
+                        <i class="fas fa-star"></i>
+                        <?php echo $task['points']; ?> Points
+                    </span>
                 </div>
-                <div class="mt-3">
-                    <p class="mb-2">
-                        <i class="fas fa-user me-2"></i>
-                        Assigned by: <?php echo htmlspecialchars($task['assigned_by_name']); ?>
-                    </p>
-                    <p class="mb-2">
-                        <i class="fas fa-align-left me-2"></i>
-                        <?php echo htmlspecialchars($task['task_description']); ?>
-                    </p>
+                <div class="notification-content">
+                    <div class="meta-item">
+                        <i class="fas fa-user"></i>
+                        <span>Assigned by: <?php echo htmlspecialchars($task['assigned_by_name']); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-align-left"></i>
+                        <span><?php echo htmlspecialchars($task['task_description']); ?></span>
+                    </div>
                     <?php if ($task['due_date']): ?>
-                    <p class="mb-3">
-                        <i class="fas fa-calendar-alt me-2"></i>
-                        Due: <?php echo $task['due_date']; ?>
-                    </p>
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>Due: <?php echo date('F j, Y', strtotime($task['due_date'])); ?></span>
+                    </div>
                     <?php endif; ?>
-                    <a href="t_member_mytasks.php" class="btn btn-primary">
-                        <i class="fas fa-eye me-2"></i>
-                        View Task Details
-                    </a>
+                    <div class="text-end mt-3">
+                        <a href="t_member_mytasks.php" class="btn-view">
+                            <i class="fas fa-eye"></i>
+                            View Task Details
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
-        <?php endwhile; ?>
+            <?php endwhile; ?>
+        <?php endif; ?>
 
         <!-- Meetings Section -->
         <h2 class="section-title">
@@ -265,60 +293,56 @@ $meetingResult = $stmt->get_result();
             Team Meetings
         </h2>
 
-        <?php while ($meeting = $meetingResult->fetch_assoc()): ?>
-        <div class="notification-card card" id="meeting-<?php echo $meeting['meeting_id']; ?>">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h3 class="h5 mb-3"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                        <span class="meeting-status status-<?php echo $meeting['status']; ?>">
-                            <?php echo ucfirst(str_replace('_', ' ', $meeting['status'])); ?>
-                        </span>
-                    </div>
-                    <button class="close-btn" onclick="removeNotification('meeting-<?php echo $meeting['meeting_id']; ?>')">
-                        <i class="fas fa-times"></i>
-                    </button>
+        <?php if ($meetingResult->num_rows === 0): ?>
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <h3>No Upcoming Meetings</h3>
+                <p class="text-muted">There are currently no meetings scheduled for your team.</p>
+            </div>
+        <?php else: ?>
+            <?php while ($meeting = $meetingResult->fetch_assoc()): ?>
+            <div class="notification-card">
+                <div class="notification-header">
+                    <h5 class="notification-title"><?php echo htmlspecialchars($meeting['title']); ?></h5>
+                    <span class="meeting-status <?php echo $meeting['status'] === 'scheduled' ? 'status-scheduled' : 'status-in-progress' ?>">
+                        <i class="fas <?php echo $meeting['status'] === 'scheduled' ? 'fa-clock' : 'fa-play-circle' ?>"></i>
+                        <?php echo ucfirst(str_replace('_', ' ', $meeting['status'])); ?>
+                    </span>
                 </div>
-                <div class="mt-3">
-                    <p class="mb-2">
-                        <i class="fas fa-align-left me-2"></i>
-                        <?php echo htmlspecialchars($meeting['description']); ?>
-                    </p>
-                    <p class="mb-2">
-                        <i class="fas fa-clock me-2"></i>
-                        <?php echo $meeting['scheduled_time']; ?>
-                    </p>
+                <div class="notification-content">
+                    <div class="meta-item">
+                        <i class="fas fa-align-left"></i>
+                        <span><?php echo htmlspecialchars($meeting['description']); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span><?php echo date('F j, Y', strtotime($meeting['scheduled_time'])); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span><?php echo date('g:i A', strtotime($meeting['scheduled_time'])); ?></span>
+                    </div>
                     <?php if ($meeting['status'] === 'in_progress'): ?>
-                    <a href="<?php echo $meeting['meet_link']; ?>" class="btn btn-success" target="_blank">
-                        <i class="fas fa-video me-2"></i>
-                        Join Meeting Now
-                    </a>
+                    <div class="text-end mt-3">
+                        <a href="<?php echo $meeting['meet_link']; ?>" class="btn-join" target="_blank">
+                            <i class="fas fa-video"></i>
+                            Join Meeting Now
+                        </a>
+                    </div>
                     <?php else: ?>
-                    <p class="timer mb-0" data-time="<?php echo $meeting['scheduled_time']; ?>">
-                        <i class="fas fa-hourglass-half me-2"></i>
-                        Time remaining: Calculating...
-                    </p>
+                    <div class="timer" data-time="<?php echo $meeting['scheduled_time']; ?>">
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>Time remaining: Calculating...</span>
+                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
-        <?php endwhile; ?>
+            <?php endwhile; ?>
+        <?php endif; ?>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
-        function removeNotification(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-
-        function clearAllNotifications() {
-            const notifications = document.querySelectorAll('.notification-card');
-            notifications.forEach(notification => {
-                notification.style.display = 'none';
-            });
-        }
-
         function updateTimers() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(timer => {
@@ -329,9 +353,9 @@ $meetingResult = $stmt->get_result();
                 if (timeLeft > 0) {
                     const hours = Math.floor(timeLeft / (1000 * 60 * 60));
                     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    timer.textContent = `Time remaining: ${hours}h ${minutes}m`;
+                    timer.querySelector('span').textContent = `Time remaining: ${hours}h ${minutes}m`;
                 } else {
-                    timer.textContent = 'Meeting should have started';
+                    timer.querySelector('span').textContent = 'Meeting should have started';
                 }
             });
         }
