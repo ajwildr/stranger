@@ -3,8 +3,6 @@ session_start();
 require '../includes/db_connect.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'TeamLead') {
-    // header("Location: login.php");
-    // exit();
     echo "<script>window.location.href = 'error.php';</script>";
 }
 
@@ -36,245 +34,278 @@ $meetingResult = $stmt->get_result();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team Lead Notifications</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <title>Team Lead Notifications | Workspace</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #34495e;
-            --background: #f8f9fa;
-            --accent: #3498db;
-            --success: #2ecc71;
-            --warning: #f1c40f;
-            --danger: #e74c3c;
-        }
-
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background);
-            min-height: 100vh;
-            padding-top: 70px;
+            background-color: #f8f9fa;
         }
 
         .navbar {
-            background-color: var(--primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 1rem;
+            background: linear-gradient(to right, #2c3e50, #3498db);
+            padding: 1rem 0;
         }
 
-        .back-btn-container {
-            position: relative;
-            display: inline-block;
-        }
-
-        .back-btn {
-            background-color: transparent;
-            color: white;
-            border: 2px solid white;
-            padding: 0.5rem 1.5rem;
-            border-radius: 5px;
+        .navbar .back-btn {
+            color: #ffffff;
             text-decoration: none;
-            transition: all 0.3s ease;
-            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
         }
 
-        .back-btn:hover {
-            background-color: white;
-            color: var(--primary);
-            transform: translateY(-1px);
+        .navbar .back-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        .navbar-brand {
+            color: #ffffff;
+            font-weight: 600;
+            margin-left: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notifications-container {
+            max-width: 1200px;
+            margin: 2rem auto;
         }
 
         .notification-card {
             background: #ffffff;
             border-radius: 10px;
             border: none;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .notification-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .notification-header {
-            background-color: #ffffff;
-            padding: 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         .notification-title {
-            color: var(--primary);
+            font-size: 1.1rem;
             font-weight: 600;
+            color: #2c3e50;
             margin: 0;
         }
 
-        .notification-subtitle {
-            color: var(--secondary);
-            margin-top: 0.5rem;
-        }
-
-        .status-approved {
-            color: var(--success);
-            font-weight: 600;
-        }
-
-        .status-rejected {
-            color: var(--danger);
-            font-weight: 600;
-        }
-
-        .timer {
-            color: var(--accent);
-            font-weight: 500;
-        }
-
-        .clear-all-btn {
-            background-color: var(--danger);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .clear-all-btn:hover {
-            background-color: #c0392b;
-            transform: translateY(-1px);
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--secondary);
-            font-size: 1.25rem;
-            opacity: 0.5;
-            transition: all 0.3s ease;
-        }
-
-        .close-btn:hover {
-            opacity: 1;
-            color: var(--danger);
+        .notification-content {
+            padding: 1.25rem;
         }
 
         .section-title {
-            color: var(--primary);
+            color: #2c3e50;
+            font-size: 1.5rem;
             font-weight: 600;
-            margin: 2rem 0 1rem;
+            margin-bottom: 1.5rem;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--accent);
+            border-bottom: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .response-time {
-            color: var(--secondary);
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6c757d;
             font-size: 0.9rem;
-            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-approved {
+            color: #2ecc71;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(46, 204, 113, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+        }
+
+        .status-rejected {
+            color: #e74c3c;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(231, 76, 60, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+        }
+
+        .timer {
+            color: #3498db;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-join {
+            background-color: #2ecc71;
+            border: none;
+            color: #ffffff;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .btn-join:hover {
+            background-color: #27ae60;
+            color: #ffffff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1.5rem;
+        }
+
+        .empty-state h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-dark fixed-top">
-        <div class="container d-flex justify-content-between align-items-center">
-            <h1 class="navbar-brand mb-0">
-                <i class="fas fa-bell me-2"></i>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg sticky-top mb-4">
+        <div class="container">
+            <span class="navbar-brand">
+                <i class="fas fa-bell"></i>
                 Notifications
-            </h1>
-            <div class="back-btn-container">
-                <a href="teamlead_dashboard.php" class="back-btn">
-                    <i class="fas fa-arrow-left me-2"></i>
-                    Back to Dashboard
-                </a>
-            </div>
+            </span>
+            <a href="teamlead_dashboard.php" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Notification Header -->
-        <div class="notification-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="notification-title">Your Notifications</h1>
-                    <p class="notification-subtitle mb-0">Stay updated with your team's activities</p>
-                </div>
-                <button class="clear-all-btn" onclick="clearAllNotifications()">
-                    <i class="fas fa-trash-alt me-2"></i>
-                    Clear All
-                </button>
-            </div>
-        </div>
-
+    <div class="container notifications-container">
         <!-- Project Extensions Section -->
         <h2 class="section-title">
-            <i class="fas fa-project-diagram me-2"></i>
+            <i class="fas fa-project-diagram"></i>
             Project Extension Responses
         </h2>
         
-        <?php while ($extension = $extensionResult->fetch_assoc()): ?>
-            <div class="notification-card card" id="extension-<?php echo $extension['extension_id']; ?>">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <h3 class="h5 mb-3"><?php echo htmlspecialchars($extension['project_title']); ?></h3>
-                        <button class="close-btn" onclick="removeNotification('extension-<?php echo $extension['extension_id']; ?>')">
-                            <i class="fas fa-times"></i>
-                        </button>
+        <?php if ($extensionResult->num_rows === 0): ?>
+            <div class="empty-state">
+                <i class="fas fa-clipboard-check"></i>
+                <h3>No Extension Responses</h3>
+                <p class="text-muted">There are no recent project extension responses to display.</p>
+            </div>
+        <?php else: ?>
+            <?php while ($extension = $extensionResult->fetch_assoc()): ?>
+            <div class="notification-card">
+                <div class="notification-header">
+                    <h5 class="notification-title"><?php echo htmlspecialchars($extension['project_title']); ?></h5>
+                    <span class="status-<?php echo strtolower($extension['status']); ?>">
+                        <i class="fas fa-<?php echo $extension['status'] === 'approved' ? 'check-circle' : 'times-circle'; ?>"></i>
+                        <?php echo ucfirst($extension['status']); ?>
+                    </span>
+                </div>
+                <div class="notification-content">
+                    <div class="meta-item">
+                        <i class="fas fa-comment"></i>
+                        <span><?php echo htmlspecialchars($extension['response_note']); ?></span>
                     </div>
-                    <p class="mb-2">Status: <span class="status-<?php echo strtolower($extension['status']); ?>"><?php echo ucfirst($extension['status']); ?></span></p>
-                    <p class="mb-2">Response: <?php echo htmlspecialchars($extension['response_note']); ?></p>
-                    <p class="mb-2">New Due Date: <?php echo date('Y-m-d', strtotime($extension['new_due_date'])); ?></p>
-                    <p class="response-time mb-0">Responded: <?php echo time_elapsed_string($extension['responded_at']); ?></p>
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>New Due Date: <?php echo date('F j, Y', strtotime($extension['new_due_date'])); ?></span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Responded: <?php echo time_elapsed_string($extension['responded_at']); ?></span>
+                    </div>
                 </div>
             </div>
-        <?php endwhile; ?>
+            <?php endwhile; ?>
+        <?php endif; ?>
 
         <!-- Meetings Section -->
         <h2 class="section-title">
-            <i class="fas fa-calendar-check me-2"></i>
+            <i class="fas fa-calendar-check"></i>
             Upcoming Meetings
         </h2>
 
-        <?php while ($meeting = $meetingResult->fetch_assoc()): ?>
-            <div class="notification-card card" id="meeting-<?php echo $meeting['meeting_id']; ?>">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <h3 class="h5 mb-3"><?php echo htmlspecialchars($meeting['title']); ?></h3>
-                        <button class="close-btn" onclick="removeNotification('meeting-<?php echo $meeting['meeting_id']; ?>')">
-                            <i class="fas fa-times"></i>
-                        </button>
+        <?php if ($meetingResult->num_rows === 0): ?>
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt"></i>
+                <h3>No Upcoming Meetings</h3>
+                <p class="text-muted">You have no scheduled meetings at this time.</p>
+            </div>
+        <?php else: ?>
+            <?php while ($meeting = $meetingResult->fetch_assoc()): ?>
+            <div class="notification-card">
+                <div class="notification-header">
+                    <h5 class="notification-title"><?php echo htmlspecialchars($meeting['title']); ?></h5>
+                </div>
+                <div class="notification-content">
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span><?php echo date('F j, Y', strtotime($meeting['scheduled_time'])); ?></span>
                     </div>
-                    <p class="mb-2">Scheduled Time: <?php echo date('Y-m-d h:i A', strtotime($meeting['scheduled_time'])); ?></p>
-                    <p class="timer mb-3" data-time="<?php echo $meeting['scheduled_time']; ?>">Time remaining: Calculating...</p>
-                    <a href="view_meetings.php" class="btn btn-primary">
-                        <i class="fas fa-video me-2"></i>
-                        Join Meeting
-                    </a>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span><?php echo date('g:i A', strtotime($meeting['scheduled_time'])); ?></span>
+                    </div>
+                    <div class="timer" data-time="<?php echo $meeting['scheduled_time']; ?>">
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>Time remaining: Calculating...</span>
+                    </div>
+                    <div class="text-end">
+                        <a href="view_meetings.php" class="btn-join">
+                            <i class="fas fa-video"></i>
+                            Join Meeting
+                        </a>
+                    </div>
                 </div>
             </div>
-        <?php endwhile; ?>
+            <?php endwhile; ?>
+        <?php endif; ?>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
     <script>
-        function removeNotification(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-
-        function clearAllNotifications() {
-            const notifications = document.querySelectorAll('.notification-card');
-            notifications.forEach(notification => {
-                notification.style.display = 'none';
-            });
-        }
-
         function updateTimers() {
             const timers = document.querySelectorAll('.timer');
             timers.forEach(timer => {
@@ -285,9 +316,9 @@ $meetingResult = $stmt->get_result();
                 if (timeLeft > 0) {
                     const hours = Math.floor(timeLeft / (1000 * 60 * 60));
                     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    timer.textContent = `Time remaining: ${hours}h ${minutes}m`;
+                    timer.querySelector('span').textContent = `Time remaining: ${hours}h ${minutes}m`;
                 } else {
-                    timer.textContent = 'Meeting should have started';
+                    timer.querySelector('span').textContent = 'Meeting should have started';
                 }
             });
         }
