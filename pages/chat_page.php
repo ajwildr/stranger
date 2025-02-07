@@ -364,7 +364,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
             });
 
             // Fetch new messages periodically
-            setInterval(fetchNewMessages, 3000);
+            setInterval(fetchNewMessages, 300);
 
             function fetchNewMessages() {
                 fetch(`chat_page.php?discussion_id=${discussionId}&action=fetch_new_messages&last_id=${lastMessageId}`)
