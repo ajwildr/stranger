@@ -89,6 +89,41 @@ $notificationCount += $row['count'];
             transform: translateY(-1px);
         }
 
+        /* Mobile Navigation Styles */
+        @media (max-width: 991px) {
+            .navbar-collapse {
+                background-color: var(--primary);
+                padding: 1rem;
+                border-radius: 0 0 10px 10px;
+                margin-top: 0.5rem;
+            }
+
+            .navbar-nav {
+                padding: 0.5rem 0;
+            }
+
+            .nav-item {
+                margin: 0.5rem 0;
+            }
+
+            .notification-link {
+                display: inline-block;
+                margin: 0.5rem 0;
+            }
+
+            .dropdown {
+                display: block;
+                margin: 0.5rem 0;
+            }
+
+            .user-menu {
+                position: static !important;
+                width: 100%;
+                margin-top: 0.5rem;
+                transform: none !important;
+            }
+        }
+
         .notification-link {
             position: relative;
             padding: 0.5rem 1rem;
@@ -110,6 +145,7 @@ $notificationCount += $row['count'];
             text-align: center;
         }
 
+        /* Rest of your existing styles remain the same */
         .dashboard-header {
             background-color: #ffffff;
             padding: 2rem;
@@ -225,11 +261,11 @@ $notificationCount += $row['count'];
                 <i class="fas fa-users me-2"></i>
                 Team Member Portal
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item">
                         <a class="notification-link" href="teammember_notifications.php">
                             <i class="fas fa-bell fa-lg"></i>
@@ -238,13 +274,12 @@ $notificationCount += $row['count'];
                             <?php endif; ?>
                         </a>
                     </li>
-                    <li class="nav-item ms-3">
+                    <li class="nav-item">
                         <span class="nav-link">
                             <i class="fas fa-user me-2"></i>Team Member
                         </span>
                     </li>
-                    <li class="nav-item ms-3">
-                        <!-- User dropdown menu -->
+                    <li class="nav-item">
                         <div class="dropdown">
                             <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="fas fa-user-circle fa-lg text-white"></i>
@@ -267,7 +302,7 @@ $notificationCount += $row['count'];
         </div>
     </nav>
 
-    <!-- Main Content -->
+    <!-- Rest of your existing content remains the same -->
     <div class="container" style="margin-top: 100px;">
         <!-- Dashboard Header -->
         <div class="dashboard-header">
