@@ -1,27 +1,36 @@
-
 <?php
 session_start();
 require '../includes/db_connect.php';
 
+// Check if user is logged in
+if (!isset($_SESSION['username']) || !isset($_SESSION['role'])) {
+    echo "<script>window.location.href = 'login.php';</script>";
+    exit;
+}
+
 // Ensure only team members can access this page
 if ($_SESSION['role'] != 'TeamMember' && $_SESSION['role'] != 'TeamLead') {
     echo "<script>window.location.href = 'error.php';</script>";
+    exit;
 }
 
 // Get the discussion_id from the URL
-if (isset($_GET['discussion_id'])) {
-    $discussion_id = $_GET['discussion_id'];
-    $query = "SELECT chat_id, username, chat_msg, time FROM chat WHERE discussion_id = ? ORDER BY time ASC";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $discussion_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $chats = [];
-    while ($row = $result->fetch_assoc()) {
-        $chats[] = $row;
-    }
-    $stmt->close();
+if (!isset($_GET['discussion_id'])) {
+    echo "<script>window.location.href = 'discussion.php';</script>";
+    exit;
 }
+
+$discussion_id = $_GET['discussion_id'];
+$query = "SELECT chat_id, username, chat_msg, time FROM chat WHERE discussion_id = ? ORDER BY time ASC";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $discussion_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$chats = [];
+while ($row = $result->fetch_assoc()) {
+    $chats[] = $row;
+}
+$stmt->close();
 
 // Handle new chat message submission via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
@@ -30,23 +39,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
     $query = "INSERT INTO chat (discussion_id, chat_msg, username, time) VALUES (?, ?, ?, CURRENT_TIMESTAMP)";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("iss", $discussion_id, $chat_msg, $username);
-    $stmt->execute();
-    $last_id = $stmt->insert_id;
-    $stmt->close();
-
-    // Return the new message data as JSON
-    $response = [
-        'success' => true,
-        'message' => [
-            'chat_id' => $last_id,
-            'username' => $username,
-            'chat_msg' => $chat_msg,
-            'time' => date('g:i A')
-        ]
-    ];
-    header('Content-Type: application/json');
-    echo json_encode($response);
-    exit;
+    
+    if ($stmt->execute()) {
+        $last_id = $stmt->insert_id;
+        $stmt->close();
+        
+        // For AJAX requests
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            $response = [
+                'success' => true,
+                'message' => [
+                    'chat_id' => $last_id,
+                    'username' => $username,
+                    'chat_msg' => $chat_msg,
+                    'time' => date('g:i A')
+                ]
+            ];
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        } else {
+            // For regular form submissions
+            echo "<script>window.location.href = 'chat_page.php?discussion_id=" . $discussion_id . "';</script>";
+            exit;
+        }
+    }
 }
 
 // Handle AJAX request for new messages
@@ -178,6 +196,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
             border-bottom-left-radius: 4px;
         }
 
+        .message.new {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .message-header {
             display: flex;
             justify-content: space-between;
@@ -260,15 +287,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
                 max-width: 85%;
             }
         }
-        /* Previous CSS styles remain the same */
-        .message.new {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
     </style>
 </head>
 <body>
@@ -297,7 +315,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
         </div>
 
         <div class="chat-input">
-            <form class="chat-form" id="chat-form">
+            <form class="chat-form" id="chat-form" method="POST">
                 <textarea name="chat_msg" placeholder="Type your message..." required></textarea>
                 <button type="submit" class="send-button">
                     <i class="fas fa-paper-plane"></i>
@@ -325,7 +343,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
                 
                 fetch(`chat_page.php?discussion_id=${discussionId}`, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -335,7 +356,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
                         scrollToBottom();
                     }
                 })
-                .catch(error => console.error('Error:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Fallback to traditional form submission
+                    chatForm.submit();
+                });
             });
 
             // Fetch new messages periodically
@@ -346,7 +371,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
                     .then(response => response.json())
                     .then(messages => {
                         messages.forEach(message => {
-                            addMessageToChat(message);
+                            if (message.username !== currentUsername) {
+                                addMessageToChat(message);
+                            }
                         });
                         if (messages.length > 0) {
                             scrollToBottom();
