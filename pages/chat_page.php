@@ -1,11 +1,10 @@
+
 <?php
 session_start();
 require '../includes/db_connect.php';
 
 // Ensure only team members can access this page
 if ($_SESSION['role'] != 'TeamMember' && $_SESSION['role'] != 'TeamLead') {
-    // header("Location: error.php");
-    // exit;
     echo "<script>window.location.href = 'error.php';</script>";
 }
 
@@ -24,7 +23,7 @@ if (isset($_GET['discussion_id'])) {
     $stmt->close();
 }
 
-// Handle new chat message submission
+// Handle new chat message submission via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
     $chat_msg = $_POST['chat_msg'];
     $username = $_SESSION['username'];
@@ -32,11 +31,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
     $stmt = $conn->prepare($query);
     $stmt->bind_param("iss", $discussion_id, $chat_msg, $username);
     $stmt->execute();
+    $last_id = $stmt->insert_id;
     $stmt->close();
-    // header("Location: chat_page.php?discussion_id=" . $discussion_id);
-    // exit;
-    echo "<script>window.location.href = 'chat_page.php?discussion_id=" . $discussion_id . "';</script>";
 
+    // Return the new message data as JSON
+    $response = [
+        'success' => true,
+        'message' => [
+            'chat_id' => $last_id,
+            'username' => $username,
+            'chat_msg' => $chat_msg,
+            'time' => date('g:i A')
+        ]
+    ];
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
+
+// Handle AJAX request for new messages
+if (isset($_GET['action']) && $_GET['action'] === 'fetch_new_messages') {
+    $last_message_id = isset($_GET['last_id']) ? (int)$_GET['last_id'] : 0;
+    
+    $query = "SELECT chat_id, username, chat_msg, time FROM chat 
+              WHERE discussion_id = ? AND chat_id > ? 
+              ORDER BY time ASC";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ii", $discussion_id, $last_message_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $new_messages = [];
+    while ($row = $result->fetch_assoc()) {
+        $row['time'] = date('g:i A', strtotime($row['time']));
+        $new_messages[] = $row;
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($new_messages);
+    exit;
 }
 ?>
 
@@ -227,6 +260,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
                 max-width: 85%;
             }
         }
+        /* Previous CSS styles remain the same */
+        .message.new {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -239,9 +281,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
             </a>
         </div>
 
-        <div class="chat-messages">
+        <div class="chat-messages" id="chat-messages">
             <?php foreach ($chats as $chat): ?>
-                <div class="message <?= ($chat['username'] == $_SESSION['username']) ? 'sent' : 'received' ?>">
+                <div class="message <?= ($chat['username'] == $_SESSION['username']) ? 'sent' : 'received' ?>" 
+                     data-message-id="<?= $chat['chat_id'] ?>">
                     <div class="message-header">
                         <strong><?= htmlspecialchars($chat['username']) ?></strong>
                         <span><?= date('g:i A', strtotime($chat['time'])) ?></span>
@@ -254,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
         </div>
 
         <div class="chat-input">
-            <form class="chat-form" method="POST" action="chat_page.php?discussion_id=<?= urlencode($discussion_id) ?>">
+            <form class="chat-form" id="chat-form">
                 <textarea name="chat_msg" placeholder="Type your message..." required></textarea>
                 <button type="submit" class="send-button">
                     <i class="fas fa-paper-plane"></i>
@@ -263,5 +306,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['chat_msg'])) {
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatMessages = document.getElementById('chat-messages');
+            const chatForm = document.getElementById('chat-form');
+            const currentUsername = '<?= $_SESSION['username'] ?>';
+            const discussionId = '<?= $discussion_id ?>';
+            let lastMessageId = getLastMessageId();
+
+            // Scroll to bottom on load
+            scrollToBottom();
+
+            // Handle form submission
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(chatForm);
+                
+                fetch(`chat_page.php?discussion_id=${discussionId}`, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessageToChat(data.message, true);
+                        chatForm.reset();
+                        scrollToBottom();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            });
+
+            // Fetch new messages periodically
+            setInterval(fetchNewMessages, 3000);
+
+            function fetchNewMessages() {
+                fetch(`chat_page.php?discussion_id=${discussionId}&action=fetch_new_messages&last_id=${lastMessageId}`)
+                    .then(response => response.json())
+                    .then(messages => {
+                        messages.forEach(message => {
+                            addMessageToChat(message);
+                        });
+                        if (messages.length > 0) {
+                            scrollToBottom();
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+
+            function addMessageToChat(message, isNew = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.username === currentUsername ? 'sent' : 'received'}`;
+                if (isNew) messageDiv.classList.add('new');
+                messageDiv.dataset.messageId = message.chat_id;
+
+                messageDiv.innerHTML = `
+                    <div class="message-header">
+                        <strong>${escapeHtml(message.username)}</strong>
+                        <span>${message.time}</span>
+                    </div>
+                    <div class="message-content">
+                        ${escapeHtml(message.chat_msg).replace(/\n/g, '<br>')}
+                    </div>
+                `;
+
+                chatMessages.appendChild(messageDiv);
+                lastMessageId = Math.max(lastMessageId, message.chat_id);
+            }
+
+            function getLastMessageId() {
+                const messages = document.querySelectorAll('.message');
+                if (messages.length === 0) return 0;
+                const lastMessage = messages[messages.length - 1];
+                return parseInt(lastMessage.dataset.messageId) || 0;
+            }
+
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+        });
+    </script>
 </body>
 </html>
