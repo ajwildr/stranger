@@ -86,55 +86,18 @@ $notificationCount += $row['count'];
 
         .nav-link:hover {
             color: #ffffff !important;
-            transform: translateY(-1px);
-        }
-
-        /* Mobile Navigation Styles */
-        @media (max-width: 991px) {
-            .navbar-collapse {
-                background-color: var(--primary);
-                padding: 1rem;
-                border-radius: 0 0 10px 10px;
-                margin-top: 0.5rem;
-            }
-
-            .navbar-nav {
-                padding: 0.5rem 0;
-            }
-
-            .nav-item {
-                margin: 0.5rem 0;
-            }
-
-            .notification-link {
-                display: inline-block;
-                margin: 0.5rem 0;
-            }
-
-            .dropdown {
-                display: block;
-                margin: 0.5rem 0;
-            }
-
-            .user-menu {
-                position: static !important;
-                width: 100%;
-                margin-top: 0.5rem;
-                transform: none !important;
-            }
         }
 
         .notification-link {
             position: relative;
-            padding: 0.5rem 1rem;
             color: rgba(255,255,255,0.9);
             text-decoration: none;
         }
 
         .notification-badge {
             position: absolute;
-            top: 0;
-            right: 0;
+            top: -5px;
+            right: -5px;
             background-color: var(--danger);
             color: white;
             border-radius: 50%;
@@ -145,7 +108,37 @@ $notificationCount += $row['count'];
             text-align: center;
         }
 
-        /* Rest of your existing styles remain the same */
+        @media (max-width: 991px) {
+            .navbar-collapse {
+                margin-top: 1rem;
+            }
+            
+            .navbar-nav {
+                gap: 1rem;
+            }
+            
+            .nav-item {
+                width: 100%;
+                text-align: left;
+            }
+
+            .notification-link {
+                display: inline-block;
+                padding: 0.5rem 0;
+            }
+
+            .user-menu {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+
+            .dropdown-menu {
+                position: static !important;
+                transform: none !important;
+                width: 100%;
+            }
+        }
+
         .dashboard-header {
             background-color: #ffffff;
             padding: 2rem;
@@ -261,11 +254,11 @@ $notificationCount += $row['count'];
                 <i class="fas fa-users me-2"></i>
                 Team Member Portal
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-lg-center">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="notification-link" href="teammember_notifications.php">
                             <i class="fas fa-bell fa-lg"></i>
@@ -279,22 +272,20 @@ $notificationCount += $row['count'];
                             <i class="fas fa-user me-2"></i>Team Member
                         </span>
                     </li>
-                    <li class="nav-item">
-                        <div class="dropdown">
-                            <button class="btn btn-icon" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-user-circle fa-lg text-white"></i>
-                            </button>
-                            <div class="dropdown-menu dropdown-menu-end user-menu">
-                                <a href="change_password.php" class="user-menu-item">
-                                    <i class="fas fa-key"></i>
-                                    Change Password
-                                </a>
-                                <div class="dropdown-divider"></div>
-                                <a href="../logout.php" class="user-menu-item text-danger">
-                                    <i class="fas fa-sign-out-alt"></i>
-                                    Logout
-                                </a>
-                            </div>
+                    <li class="nav-item dropdown">
+                        <button class="btn btn-icon" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg text-white"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end user-menu">
+                            <a href="change_password.php" class="user-menu-item">
+                                <i class="fas fa-key"></i>
+                                Change Password
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="../logout.php" class="user-menu-item text-danger">
+                                <i class="fas fa-sign-out-alt"></i>
+                                Logout
+                            </a>
                         </div>
                     </li>
                 </ul>
@@ -302,7 +293,7 @@ $notificationCount += $row['count'];
         </div>
     </nav>
 
-    <!-- Rest of your existing content remains the same -->
+    <!-- Dashboard Content -->
     <div class="container" style="margin-top: 100px;">
         <!-- Dashboard Header -->
         <div class="dashboard-header">
